@@ -12,19 +12,9 @@ private:
 	int speed;
 
 public:
-	void SetName(std::string name)
-	{
-		this->name = name;
-	}
-
 	std::string GetName()
 	{
 		return name;
-	}
-
-	void SetSpeed(int speed)
-	{
-		this->speed = speed;
 	}
 
 	int GetSpeed()
@@ -52,7 +42,7 @@ private:
 	{
 		if (!sidePeople.size())
 		{
-			printf("There are no people on this side of the bridge.\n");
+			printf("There are no more people on this side of the bridge.\n");
 			return false;
 		}
 		else if (sidePeople.size() == 1)
@@ -73,6 +63,11 @@ private:
 		return true;
 	}
 
+	void SetTimeLeft(int s)
+	{
+		this->timeLeft = s;
+	}
+
 public:
 	void SwitchLampSide()
 	{
@@ -82,6 +77,11 @@ public:
 	bool LampIsOnRightSide()
 	{
 		return this->lampIsRightSide;
+	}
+
+	int GetTimeLeft()
+	{
+		return this->timeLeft;
 	}
 
 	bool IsPersonOnRightSide(int speed)
@@ -94,9 +94,9 @@ public:
 		return false;
 	}
 
-	int GetTimeLeft()
+	int GetMembersLeft()
 	{
-		return this->timeLeft;
+		return this->rightSide.size();
 	}
 
 	CrossingGame()
@@ -110,7 +110,7 @@ public:
 
 	void PrintMenu()
 	{
-		std::cout << "MENU FOR FAMILY CRISIS\n\n";
+		std::cout << "\nMENU FOR FAMILY CRISIS\n\n";
 		printf("[%d] %s (%d second to cross the bridge)\n", 1, "John", 1);
 		printf("[%d] %s (%d seconds to cross the bridge)\n", 3, "Mark", 3);
 		printf("[%d] %s (%d seconds to cross the bridge)\n", 6, "Mommy Betty", 6);
@@ -118,16 +118,21 @@ public:
 		printf("[%d] %s (%d seconds to cross the bridge)\n", 12, "Grandpa Gusto", 12);
 	}
 
-	void PrintLeftSide()
+	void PrintLeftSide(std::string extra)
 	{
 		if (PrintMembersOnSide(this->leftSide))
-			printf(" is now on the left side of the bridge.\n");
+		{
+			if (extra == "")
+				printf(" is now on the left side of the bridge.\n");
+			else
+				printf(" %s\n", extra.c_str());
+		}
 	}
 
 	void PrintRightSide()
 	{
 		if (PrintMembersOnSide(this->rightSide))
-			printf(" is in the right side of the bridge.\n");
+			printf(" is on the right side of the bridge.\n");
 	}
 
 	int *GetMoveInput()
@@ -140,7 +145,7 @@ public:
 			again = false;
 			std::string input = "";
 			int secondIndex = 0;
-			std::cout << "Enter the one or two persons that will cross the bridge: ";
+			std::cout << "\nEnter the one or two persons that will cross the bridge: ";
 			std::getline(std::cin, input);
 
 			// .split() but way too primitive
@@ -179,9 +184,26 @@ public:
 	bool MoveToOtherSide(int arr[])
 	{
 		int people = 1;
+		int personTime = -1;
 		bool toTheLeft = this->IsPersonOnRightSide(arr[0]);
+
+		// check if people are on the same side
 		if (arr[1] != 0)
+		{
 			people = 2;
+			if (!this->IsPersonOnRightSide(arr[1]) == toTheLeft)
+			{
+				printf("\nThe people you chose aren't on the same side!\n");
+				return false;
+			}
+		}
+
+		// check if the lamp is accessible to them
+		if (!(this->LampIsOnRightSide() == toTheLeft))
+		{
+			printf("\nThe lamp is not on that side of the bridge!\n");
+			return false;
+		}
 
 		for (int i = 0; i < people; i++)
 		{
@@ -192,17 +214,42 @@ public:
 				auto it = find_if(this->rightSide.begin(), this->rightSide.end(), [speed](Person &obj) { return obj.GetSpeed() == speed; });
 				int index = std::distance(rightSide.begin(), it);
 				this->leftSide.push_back(*it);
+
+				if (this->rightSide[index].GetSpeed() > personTime)
+					personTime = this->rightSide[index].GetSpeed();
+
 				this->rightSide.erase(it);
 			}
 			else if (!toTheLeft)
 			{
 				//printf("The person is moving from left to right\n");
 				auto it = find_if(this->leftSide.begin(), this->leftSide.end(), [speed](Person &obj) { return obj.GetSpeed() == speed; });
+				int index = std::distance(leftSide.begin(), it);
 				this->rightSide.push_back(*it);
+
+				printf("\n%s will go back to the right side of the bridge to get another member of the family.\n", this->leftSide[index].GetName().c_str());
+
+				if (this->leftSide[index].GetSpeed() > personTime)
+					personTime = this->leftSide[index].GetSpeed();
+
 				this->leftSide.erase(it);
+
+				this->PrintLeftSide("remains in the left side of the bridge.");
 			}
 		}
-		this->PrintLeftSide();
+
+		this->SetTimeLeft(this->GetTimeLeft() - personTime);
+
+		if (this->GetTimeLeft() <= 0)
+		{
+			return false;
+		}
+
+		if (toTheLeft)
+		{
+			this->PrintLeftSide("");
+		}
+		printf("\nLamp is good for = %d seconds\n", this->GetTimeLeft());
 		this->PrintRightSide();
 
 		return true;
@@ -222,7 +269,28 @@ void GameLoop()
 		{
 			game.SwitchLampSide();
 		}
+
+		if (game.GetTimeLeft() <= 0 && game.GetMembersLeft() > 0)
+		{
+			gameOver = true;
+			printf("\n\nYou lose...");
+		}
+		else if (game.GetTimeLeft() >= 0 && game.GetMembersLeft() <= 0)
+		{
+			gameOver = true;
+			printf("\n\nYou win this time!");
+		}
+
+		system("read -p '\nPress any key to continue' var");
+		/*
+			if you're on windows, replace the line that says system with:
+			system("pause");
+			printf("\nPress any key to continue");
+			(not sure though)	
+		*/
+
 	} while (!gameOver);
+	printf("\n[G A M E O V E R]\n");
 }
 
 int main()

@@ -1,3 +1,3 @@
-# For ma boi Kayle
+# For ma boi _Kayle_
 
-_incomplete_ atm
+_suh_. i think it's done now? there's always some __bugs__ around...
